@@ -1,0 +1,8 @@
+--index-url https://download.pytorch.org/whl/rocm6.1
+torch>=2.0.0
+torchvision
+torchaudio
+triton
+pytorch-triton-rocm
+xformers
+# flash-attn @ git+https://github.com/ROCm/flash-attention.git
