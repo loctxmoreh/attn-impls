@@ -37,38 +37,38 @@ from xformers.ops.fmha.triton_splitk import (
 xformers_attn_ck = partial(xops.memory_efficient_attention, op=MemoryEfficientAttentionCkOp)
 xformers_attn_triton = partial(xops.memory_efficient_attention, op=(TritonFw_S1, ))
 
+if __name__ == "__main__":
+    B, M, K = 3, 32, 128
+    # input_kwargs = dict(device="cuda", dtype=torch.float16)
+    input_kwargs = dict(device="cuda", dtype=torch.bfloat16)
+    q = torch.randn((B, M, 8, K), **input_kwargs)
+    k = torch.randn((B, M, 2, K), **input_kwargs)
+    v = torch.randn((B, M, 2, K), **input_kwargs)
 
-B, M, K = 3, 32, 128
-# input_kwargs = dict(device="cuda", dtype=torch.float16)
-input_kwargs = dict(device="cuda", dtype=torch.bfloat16)
-q = torch.randn((B, M, 8, K), **input_kwargs)
-k = torch.randn((B, M, 2, K), **input_kwargs)
-v = torch.randn((B, M, 2, K), **input_kwargs)
+    q = q.reshape((B, M, 2, 4, K))
+    k = k.reshape((B, M, 2, 1, K)).expand((B, M, 2, 4, K))
+    v = v.reshape((B, M, 2, 1, K)).expand((B, M, 2, 4, K))
 
-q = q.reshape((B, M, 2, 4, K))
-k = k.reshape((B, M, 2, 1, K)).expand((B, M, 2, 4, K))
-v = v.reshape((B, M, 2, 1, K)).expand((B, M, 2, 4, K))
+    output_sdpa = F.scaled_dot_product_attention(q, k, v)
+    print(f"{output_sdpa.shape=}")
 
-output_sdpa = F.scaled_dot_product_attention(q, k, v)
-print(f"{output_sdpa.shape=}")
+    output = xops.memory_efficient_attention(q, k, v)
+    print(f"{output.shape=}")
+    output_ck = xformers_attn_ck(q, k, v)
+    output_triton = xformers_attn_triton(q, k, v)
 
-output = xops.memory_efficient_attention(q, k, v)
-print(f"{output.shape=}")
-output_ck = xformers_attn_ck(q, k, v)
-output_triton = xformers_attn_triton(q, k, v)
+    # print(torch.backends.cuda.mem_efficient_sdp_enabled())    # True
+    # torch.backends.cuda.enable_mem_efficient_sdp(True)
 
-# print(torch.backends.cuda.mem_efficient_sdp_enabled())    # True
-# torch.backends.cuda.enable_mem_efficient_sdp(True)
+    # print(torch.allclose(output_ck, output))        # True
+    # torch.testing.assert_close(output_ck, output)        # True
 
-# print(torch.allclose(output_ck, output))        # True
-# torch.testing.assert_close(output_ck, output)        # True
+    # print(torch.allclose(output, output_triton, rtol=1e-03, atol=1e-05))      # False
+    # print(torch.allclose(output, output_triton, rtol=1e-02, atol=1e-03))      
+    #
+    # print(torch.allclose(output_ck, output_triton, rtol=1e-03, atol=1e-05))   # False
+    # print(torch.allclose(output_ck, output_triton, rtol=1e-02, atol=1e-03))  
+    # torch.testing.assert_close(output_ck, output_triton) 
 
-# print(torch.allclose(output, output_triton, rtol=1e-03, atol=1e-05))      # False
-# print(torch.allclose(output, output_triton, rtol=1e-02, atol=1e-03))      
-#
-# print(torch.allclose(output_ck, output_triton, rtol=1e-03, atol=1e-05))   # False
-# print(torch.allclose(output_ck, output_triton, rtol=1e-02, atol=1e-03))  
-# torch.testing.assert_close(output_ck, output_triton) 
-
-print(torch.allclose(output, output_sdpa, rtol=1e-02, atol=1e-03)) # False
-# torch.testing.assert_close(output, output_sdpa) 
+    print(torch.allclose(output, output_sdpa, rtol=1e-02, atol=1e-03)) # False
+    # torch.testing.assert_close(output, output_sdpa) 

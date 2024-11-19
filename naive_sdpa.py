@@ -1,4 +1,6 @@
 # Copied from: https://github.com/jadore801120/attention-is-all-you-need-pytorch/blob/master/transformer/Modules.py
+import math 
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -53,6 +55,15 @@ def naive_xformers(q, k, v, p=0.0, attn_bias=None):
 
     return attn.transpose(1, 2) # (B H M K) -> (B M H K)
 
+
+def sdpa(query, key, value) -> torch.Tensor:
+    # L, S = query.size(-2), key.size(-2)
+    scale_factor = 1 / math.sqrt(query.size(-1)) 
+    attn_weight = query @ key.transpose(-2, -1) * scale_factor
+    attn_weight = torch.softmax(attn_weight, dim=-1)
+    return attn_weight @ value
+
+
 def custom_check(output_1, output_2):
     TOL = 1e-6
     assert output_1.shape == output_2.shape
@@ -72,6 +83,7 @@ if __name__ == "__main__":
     o1 = naive_xformers(q, k, v)
     o2, _ = ScaledDotProductAttention(temperature, 0.0).forward(q, k, v)
     o3 = memory_efficient_attention(q, k, v)
+    o4 = sdpa(q, k, v)
     # print(f"{o.shape=}, {o1.shape=}, {o2.shape=}")
 
     # monkey patch
@@ -99,4 +111,7 @@ if __name__ == "__main__":
     print(torch.allclose(o1, o3))
     # torch.testing.assert_close(o1, o3)
     print(custom_check(o1, o3))
+
+    print(torch.allclose(o, o4))
+    print(custom_check(o, o4))
 
