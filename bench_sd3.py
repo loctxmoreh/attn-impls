@@ -57,7 +57,7 @@ def benchmark(name, func, shapes, device='cuda'):
         torch.cuda.synchronize()
         start_time = time.time()
         with torch.no_grad():
-            _ = flash_attn_func(query, key, value)
+            _ = func(query, key, value)
         torch.cuda.synchronize()
         latency = time.time() - start_time
         latencies.append(latency)
