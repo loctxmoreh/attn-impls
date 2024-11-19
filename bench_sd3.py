@@ -2,21 +2,15 @@ import time
 
 import torch
 from torch.nn import functional as F
-from torch.utils.flop_counter import sdpa_flop_count
-
 from xformers import ops as xops
+from flash_attn import flash_attn_func
+from flash_attn.flash_attn_triton_og import attention as flash_attn_triton_func
 
 from xformers_impl import xformers_attn_ck
 from xformers_impl import xformers_attn_triton_s64 as xformers_attn_triton
 
-# https://github.com/ROCm/flash-attention
-from flash_attn import flash_attn_func
-from flash_attn.flash_attn_triton_og import attention as flash_attn_triton_func
-
-from flash_attn_triton import MetaData
-from flash_attn_triton import attention as attn_triton_impl
-
 from pt_impl import pt_sdpa_cpu, pt_flash, pt_xformers
+from pure_triton_impl import pure_triton_attn
 
 
 def calculate_tflops(latency, batch_size, sequence_length, num_heads, head_dim):
@@ -46,7 +40,7 @@ def benchmark(name, func, batch_size, sequence_length, num_heads, head_dim, layo
 
     # Warmup
     for _ in range(5):
-        _ = func(query, key, value)
+            _ = func(query, key, value)
 
     # Measure latency
     latencies = []
@@ -78,16 +72,6 @@ if __name__ == "__main__":
         sm_scale = 1.0 / (q.shape[-1] ** 0.5)
         return flash_attn_triton_func(q, k, v, sm_scale)
 
-    # wrap pure triton impl
-    def pure_triton_attn(q, k, v):
-        sm_scale = 1.0 / (q.shape[-1] ** 0.5)
-        metadata = MetaData(sm_scale)
-        metadata.layout = "bshd"
-        metadata.max_seqlens_q = q.shape[1]
-        metadata.max_seqlens_k = k.shape[1]
-        return attn_triton_impl(q, k, v, None, metadata)
-
-
     benchmark("cpu-impl", pt_sdpa_cpu, batch_size, sequence_length, num_heads, head_dim, device="cpu")  # Dispatch error
 
     benchmark("flash_attn-ck", flash_attn_func, batch_size, sequence_length, num_heads, head_dim, layout="bshd")
@@ -97,7 +81,7 @@ if __name__ == "__main__":
     benchmark("xformers-ck", xformers_attn_ck, batch_size, sequence_length, num_heads, head_dim, layout="bshd")
     benchmark("xformers-triton", xformers_attn_triton, batch_size, sequence_length, num_heads, head_dim, layout="bshd")
 
-    benchmark("pure-triton", pure_triton_attn, batch_size, sequence_length, num_heads, head_dim)
+    benchmark("pure-triton", pure_triton_attn, batch_size, sequence_length, num_heads, head_dim, layout="bshd")
 
     benchmark("pytorch-default", F.scaled_dot_product_attention, batch_size, sequence_length, num_heads, head_dim, layout="bhsd")
     benchmark("pytorch-flash", pt_flash, batch_size, sequence_length, num_heads, head_dim, layout="bhsd")
