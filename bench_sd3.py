@@ -10,7 +10,7 @@ from xformers_impl import xformers_attn_ck
 from xformers_impl import xformers_attn_triton_s64 as xformers_attn_triton
 
 from pt_impl import pt_sdpa_cpu, pt_flash, pt_xformers
-from pure_triton_impl import pure_triton_attn
+from pure_triton_impl import pure_triton_attn_bshd, pure_triton_attn_bhsd
 
 
 def calculate_tflops(latency, batch_size, sequence_length, num_heads, head_dim):
@@ -72,7 +72,7 @@ if __name__ == "__main__":
         sm_scale = 1.0 / (q.shape[-1] ** 0.5)
         return flash_attn_triton_func(q, k, v, sm_scale)
 
-    benchmark("cpu-impl", pt_sdpa_cpu, batch_size, sequence_length, num_heads, head_dim, device="cpu")  # Dispatch error
+    benchmark("cpu-impl", pt_sdpa_cpu, batch_size, sequence_length, num_heads, head_dim, device="cpu")
 
     benchmark("flash_attn-ck", flash_attn_func, batch_size, sequence_length, num_heads, head_dim, layout="bshd")
     # benchmark("flash_attn-triton", flash_attn_triton, batch_size, sequence_length, num_heads, head_dim) # Compile error
@@ -81,7 +81,8 @@ if __name__ == "__main__":
     benchmark("xformers-ck", xformers_attn_ck, batch_size, sequence_length, num_heads, head_dim, layout="bshd")
     benchmark("xformers-triton", xformers_attn_triton, batch_size, sequence_length, num_heads, head_dim, layout="bshd")
 
-    benchmark("pure-triton", pure_triton_attn, batch_size, sequence_length, num_heads, head_dim, layout="bshd")
+    benchmark("triton-bshd", pure_triton_attn_bshd, batch_size, sequence_length, num_heads, head_dim, layout="bshd")
+    benchmark("triton-bhsd", pure_triton_attn_bhsd, batch_size, sequence_length, num_heads, head_dim, layout="bhsd")
 
     benchmark("pytorch-default", F.scaled_dot_product_attention, batch_size, sequence_length, num_heads, head_dim, layout="bhsd")
     benchmark("pytorch-flash", pt_flash, batch_size, sequence_length, num_heads, head_dim, layout="bhsd")
