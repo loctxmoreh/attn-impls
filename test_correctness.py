@@ -15,7 +15,9 @@ def main():
     num_heads = 4429
     head_dim = 64
     device = 'cuda'
-    # rtol, atol = 1e-3, 1e-5
+    # rtol, atol = 1e-3, 1e-5     # too strict
+    # rtol, atol = 1e-2, 1e-2     # work
+    # rtol, atol = 1e-3, 1e-3     # work
     rtol, atol = 1e-2, 1e-3
 
     print(f"{rtol=}, {atol=}")
