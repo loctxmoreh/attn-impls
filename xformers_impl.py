@@ -33,7 +33,7 @@ xformers_attn_triton_s8 = partial(xops.memory_efficient_attention, op=MemoryEffi
 xformers_attn_triton_s16 = partial(xops.memory_efficient_attention, op=MemoryEfficientAttentionTritonS16_Op)
 xformers_attn_triton_s32 = partial(xops.memory_efficient_attention, op=MemoryEfficientAttentionTritonS32_Op)
 xformers_attn_triton_s64 = partial(xops.memory_efficient_attention, op=MemoryEfficientAttentionTritonS64_Op)
-xformers_attn_triton_s128 = partial(xops.memory_efficient_attention, op=MemoryEfficientAttentionTritonS128_Op)
+# xformers_attn_triton_s128 = partial(xops.memory_efficient_attention, op=MemoryEfficientAttentionTritonS128_Op)    # Cause core dump
 
 
 # In context of GPU, I have no idea why the need for multiple split-K impls
