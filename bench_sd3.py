@@ -57,7 +57,7 @@ def benchmark(name, func, batch_size, sequence_length, num_heads, head_dim, layo
     ms = triton.testing.do_bench(partial(func, query, key, value),
                                  warmup=WARM_UP, rep=REP, return_mode="mean")
     tflops = calculate_tflops(ms * 1e-3, batch_size, sequence_length, num_heads, head_dim)
-    print(f"{name:<20} \t{ms=} \t{tflops=}")
+    print(f"{name:<20} \tMilisec={ms:.6f} \tTFLOPS={tflops:.6f}")
 
 
 if __name__ == "__main__":
