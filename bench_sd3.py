@@ -1,10 +1,11 @@
-import time
+from functools import partial
 
 import torch
 from torch.nn import functional as F
 from xformers import ops as xops
 from flash_attn import flash_attn_func
 from flash_attn.flash_attn_triton_og import attention as flash_attn_triton_func
+import triton
 
 from xformers_impl import xformers_attn_ck
 from xformers_impl import (
@@ -48,29 +49,15 @@ def prepare_input(bs, seq_len, num_heads, head_dim, layout="bshd", device="cuda"
 
 
 def benchmark(name, func, batch_size, sequence_length, num_heads, head_dim, layout="bshd", device='cuda'):
+    WARM_UP = 25
+    REP = 100
     query, key, value = prepare_input(batch_size, sequence_length, num_heads,
                                       head_dim, layout=layout, device=device)
 
-    # Warmup
-    for _ in range(5):
-            _ = func(query, key, value)
-
-    # Measure latency
-    latencies = []
-    tflopses = []
-    for _ in range(30):
-        start_time = time.time()
-        torch.cuda.synchronize()
-        _ = func(query, key, value)
-        torch.cuda.synchronize()
-        latency = time.time() - start_time
-        latencies.append(latency)
-        tflopses.append(calculate_tflops(latency, batch_size, sequence_length, num_heads, head_dim))
-
-    avg = lambda x: sum(x) / len(x)
-    avg_latency = avg(latencies)
-    avg_tflops = avg(tflopses)
-    print(f"{name:<20}:\tAvg latency: {avg_latency:.6f} s,\tAvg TFLOPs: {avg_tflops:.6f}")
+    ms = triton.testing.do_bench(partial(func, query, key, value),
+                                 warmup=WARM_UP, rep=REP, return_mode="mean")
+    tflops = calculate_tflops(ms * 10**3, batch_size, sequence_length, num_heads, head_dim)
+    print(f"{name:<20} \t{ms=} \t{tflops=}")
 
 
 if __name__ == "__main__":
@@ -89,7 +76,7 @@ if __name__ == "__main__":
     benchmark("xformers-ck", xformers_attn_ck, batch_size, sequence_length, num_heads, head_dim, layout="bshd")
     benchmark("xformers-triton", xformers_attn_triton, batch_size, sequence_length, num_heads, head_dim, layout="bshd")
 
-    # These one performs so bad, commented out
+    # These ones perform so bad, commented out
     # benchmark("xformers-triton-s2", xformers_attn_triton_s2, batch_size, sequence_length, num_heads, head_dim, layout="bshd")
     # benchmark("xformers-triton-s4", xformers_attn_triton_s4, batch_size, sequence_length, num_heads, head_dim, layout="bshd")
     # benchmark("xformers-triton-s8", xformers_attn_triton_s8, batch_size, sequence_length, num_heads, head_dim, layout="bshd")
