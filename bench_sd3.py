@@ -56,7 +56,7 @@ def benchmark(name, func, shapes, device='cuda'):
     avg = lambda x: sum(x) / len(x)
     avg_latency = avg(latencies)
     avg_tflops = avg(tflopses)
-    print(f"{name}: Avg latency: {avg_latency:.6f} s, Avg TFLOPs: {avg_tflops:.6f}")
+    print(f"{name:<20}:\tAvg latency: {avg_latency:.6f} s,\tAvg TFLOPs: {avg_tflops:.6f}")
 
 
 if __name__ == "__main__":
