@@ -20,3 +20,11 @@ def pt_flash(q, k, v):
 def pt_xformers(q, k, v):
     with sdpa_kernel(backends=[SDPBackend.EFFICIENT_ATTENTION]):
         return F.scaled_dot_product_attention(q, k, v)
+
+
+if __name__ == "__main__":
+    b, s, h, d = 2, 24, 4429, 64
+    q = torch.randn((b, h, s, d), device='cpu', dtype=torch.float16)
+    k = torch.randn((b, h, s, d), device='cpu', dtype=torch.float16)
+    v = torch.randn((b, h, s, d), device='cpu', dtype=torch.float16)
+    out = F.scaled_dot_product_attention(q, k, v)
