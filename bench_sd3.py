@@ -1,31 +1,21 @@
-from functools import partial
 import time
 
 import torch
+from torch.nn import functional as F
 
-# https://github.com/ROCm/xformers
-import xformers.ops as xops
-from xformers.ops.fmha import MemoryEfficientAttentionCkOp
-from xformers.ops.fmha.triton_splitk import (
-    FwOp_S1 as TritonFw_S1,
-    FwOp_S2 as TritonFw_S2,
-    FwOp_S4 as TritonFw_S4,
-    FwOp_S8 as TritonFw_S8,
-    FwOp_S16 as TritonFw_S16,
-    FwOp_S32 as TritonFw_S32,
-    FwOp_S64 as TritonFw_S64,
-    FwOp_S128 as TritonFw_S128,
-)
+from xformers import ops as xops
 
-from pt_impl import pt_sdpa_cpu, pt_flash, pt_xformers
+from xformers_impl import xformers_attn_ck
+from xformers_impl import xformers_attn_triton_s64 as xformers_attn_triton
 
 # https://github.com/ROCm/flash-attention
 from flash_attn import flash_attn_func
 from flash_attn.flash_attn_triton_og import attention as flash_attn_triton_func
 
-# get from: https://github.com/ROCm/triton/blob/db2ca015159c6592c30a6bfcd77b9cc540063a8e/python/perf-kernels/flash-attention.py
 from flash_attn_triton import MetaData
 from flash_attn_triton import attention as attn_triton_impl
+
+from pt_impl import pt_flash, pt_xformers
 
 
 def calculate_tflops(latency, batch_size, sequence_length, num_heads, head_dim):
@@ -77,10 +67,6 @@ if __name__ == "__main__":
     head_dim = 64
     shapes = (batch_size, sequence_length, num_heads, head_dim)
 
-    # Set up func
-    xformers_attn_ck = partial(xops.memory_efficient_attention, op=MemoryEfficientAttentionCkOp)
-    xformers_attn_triton = partial(xops.memory_efficient_attention, op=(TritonFw_S64, )) # SplitK seems not affect perf much...
-
     # wrap flash_attn_triton to pass sm_scale
     def flash_attn_triton(q, k, v):
         sm_scale = 1.0 / (q.shape[-1] ** 0.5)
@@ -96,9 +82,10 @@ if __name__ == "__main__":
         return attn_triton_impl(q, k, v, None, metadata)
 
 
-    # benchmark("cpu-impl", pt_sdpa_cpu, shapes, device="cpu")
+    # benchmark("cpu-impl", pt_sdpa_cpu, shapes, device="cpu")  # Dispatch error
     benchmark("flash_attn-ck", flash_attn_func, shapes)
     # benchmark("flash_attn-triton", flash_attn_triton, shapes) # Compile error
+    benchmark("xformers-default", xops.memory_efficient_attention, shapes)
     benchmark("xformers-ck", xformers_attn_ck, shapes)
     benchmark("xformers-triton", xformers_attn_triton, shapes)
     benchmark("pure-triton", pure_triton_attn, shapes)

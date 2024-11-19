@@ -24,6 +24,8 @@ def add_pre_call_hook(call, hook):
 AttnProcessor2_0.__call__ = add_pre_call_hook(AttnProcessor2_0.__call__, attn_pre_forward_hook)
 # input shape [1, 512, 128, 128]
 
+# q k v shape (batch, num_head, seq_len, head_dim) [2, 24, 4429, 64]
+
 prompt = "Astronaut in a jungle"
 model_name_or_path = "stabilityai/stable-diffusion-3-medium-diffusers"
 # model_name_or_path = "/home/share-mv/diffusion-models/stabilityai/stable-diffusion-3-medium"

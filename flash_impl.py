@@ -9,6 +9,7 @@ from flash_attn.flash_attn_triton import flash_attn_func as flash_attn_triton
 from flash_attn_triton import MetaData
 from flash_attn_triton import attention as pure_triton_attn
 
+
 if __name__ == "__main__":
     batch = 4
     seq_len_q, seq_len_k = 32, 32

@@ -14,28 +14,31 @@ from xformers.ops.fmha.triton_splitk import (
     FwOp_S64 as TritonFw_S64,
     FwOp_S128 as TritonFw_S128,
 )
-# from xformers.ops.fmha.triton_splitk import (
-#     BwOp_S1 as TritonBw_S1,
-#     BwOp_S2 as TritonBw_S2,
-#     BwOp_S4 as TritonBw_S4,
-#     BwOp_S8 as TritonBw_S8,
-#     BwOp_S16 as TritonBw_S16,
-#     BwOp_S32 as TritonBw_S32,
-#     BwOp_S64 as TritonBw_S64,
-#     BwOp_S128 as TritonBw_S128,
-# )
 
-# MemoryEfficientAttentionTritonS1_Op = (TritonFw_S1, TritonBw_S1)
-# MemoryEfficientAttentionTritonS2_Op = (TritonFw_S2, TritonBw_S2)
-# MemoryEfficientAttentionTritonS4_Op = (TritonFw_S4, TritonBw_S4)
-# MemoryEfficientAttentionTritonS8_Op = (TritonFw_S8, TritonBw_S8)
-# MemoryEfficientAttentionTritonS16_Op = (TritonFw_S16, TritonBw_S16)
-# MemoryEfficientAttentionTritonS32_Op = (TritonFw_S32, TritonBw_S32)
-# MemoryEfficientAttentionTritonS64_Op = (TritonFw_S64, TritonBw_S64)
-# MemoryEfficientAttentionTritonS128_Op = (TritonFw_S128, TritonBw_S128)
+MemoryEfficientAttentionTritonS1_Op = (TritonFw_S1, )
+MemoryEfficientAttentionTritonS2_Op = (TritonFw_S2, )
+MemoryEfficientAttentionTritonS4_Op = (TritonFw_S4, )
+MemoryEfficientAttentionTritonS8_Op = (TritonFw_S8, )
+MemoryEfficientAttentionTritonS16_Op = (TritonFw_S16, )
+MemoryEfficientAttentionTritonS32_Op = (TritonFw_S32, )
+MemoryEfficientAttentionTritonS64_Op = (TritonFw_S64, )
+MemoryEfficientAttentionTritonS128_Op = (TritonFw_S128, )
 
 xformers_attn_ck = partial(xops.memory_efficient_attention, op=MemoryEfficientAttentionCkOp)
-xformers_attn_triton = partial(xops.memory_efficient_attention, op=(TritonFw_S1, ))
+
+xformers_attn_triton_s1 = partial(xops.memory_efficient_attention, op=MemoryEfficientAttentionTritonS1_Op)
+xformers_attn_triton_s2 = partial(xops.memory_efficient_attention, op=MemoryEfficientAttentionTritonS2_Op)
+xformers_attn_triton_s4 = partial(xops.memory_efficient_attention, op=MemoryEfficientAttentionTritonS4_Op)
+xformers_attn_triton_s8 = partial(xops.memory_efficient_attention, op=MemoryEfficientAttentionTritonS8_Op)
+xformers_attn_triton_s16 = partial(xops.memory_efficient_attention, op=MemoryEfficientAttentionTritonS16_Op)
+xformers_attn_triton_s32 = partial(xops.memory_efficient_attention, op=MemoryEfficientAttentionTritonS32_Op)
+xformers_attn_triton_s64 = partial(xops.memory_efficient_attention, op=MemoryEfficientAttentionTritonS64_Op)
+xformers_attn_triton_s128 = partial(xops.memory_efficient_attention, op=MemoryEfficientAttentionTritonS128_Op)
+
+
+# In context of GPU, I have no idea why the need for multiple split-K impls
+# Choosing S1 as default
+xformers_attn_triton = xformers_attn_triton_s1
 
 if __name__ == "__main__":
     B, M, K = 3, 32, 128
