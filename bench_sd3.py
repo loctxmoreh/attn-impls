@@ -7,10 +7,23 @@ from flash_attn import flash_attn_func
 from flash_attn.flash_attn_triton_og import attention as flash_attn_triton_func
 
 from xformers_impl import xformers_attn_ck
-from xformers_impl import xformers_attn_triton_s64 as xformers_attn_triton
-
+from xformers_impl import (
+    xformers_attn_triton_s1 as xformers_attn_triton,
+    # xformers_attn_triton_s2,
+    # xformers_attn_triton_s4,
+    # xformers_attn_triton_s8,
+    # xformers_attn_triton_s16,
+    # xformers_attn_triton_s32,
+    # xformers_attn_triton_s64,
+)
 from pt_impl import pt_sdpa_cpu, pt_flash, pt_xformers
 from pure_triton_impl import pure_triton_attn_bshd, pure_triton_attn_bhsd
+
+
+# wrap flash_attn_triton to pass sm_scale
+def flash_attn_triton(q, k, v):
+    sm_scale = 1.0 / (q.shape[-1] ** 0.5)
+    return flash_attn_triton_func(q, k, v, sm_scale)
 
 
 def calculate_tflops(latency, batch_size, sequence_length, num_heads, head_dim):
@@ -67,11 +80,6 @@ if __name__ == "__main__":
     num_heads = 4429
     head_dim = 64
 
-    # wrap flash_attn_triton to pass sm_scale
-    def flash_attn_triton(q, k, v):
-        sm_scale = 1.0 / (q.shape[-1] ** 0.5)
-        return flash_attn_triton_func(q, k, v, sm_scale)
-
     benchmark("cpu-impl", pt_sdpa_cpu, batch_size, sequence_length, num_heads, head_dim, device="cpu")
 
     benchmark("flash_attn-ck", flash_attn_func, batch_size, sequence_length, num_heads, head_dim, layout="bshd")
@@ -80,6 +88,14 @@ if __name__ == "__main__":
     benchmark("xformers-default", xops.memory_efficient_attention, batch_size, sequence_length, num_heads, head_dim, layout="bshd")
     benchmark("xformers-ck", xformers_attn_ck, batch_size, sequence_length, num_heads, head_dim, layout="bshd")
     benchmark("xformers-triton", xformers_attn_triton, batch_size, sequence_length, num_heads, head_dim, layout="bshd")
+
+    # These one performs so bad, commented out
+    # benchmark("xformers-triton-s2", xformers_attn_triton_s2, batch_size, sequence_length, num_heads, head_dim, layout="bshd")
+    # benchmark("xformers-triton-s4", xformers_attn_triton_s4, batch_size, sequence_length, num_heads, head_dim, layout="bshd")
+    # benchmark("xformers-triton-s8", xformers_attn_triton_s8, batch_size, sequence_length, num_heads, head_dim, layout="bshd")
+    # benchmark("xformers-triton-s16", xformers_attn_triton_s16, batch_size, sequence_length, num_heads, head_dim, layout="bshd")
+    # benchmark("xformers-triton-s32", xformers_attn_triton_s32, batch_size, sequence_length, num_heads, head_dim, layout="bshd")
+    # benchmark("xformers-triton-s64", xformers_attn_triton_s64, batch_size, sequence_length, num_heads, head_dim, layout="bshd")
 
     benchmark("triton-bshd", pure_triton_attn_bshd, batch_size, sequence_length, num_heads, head_dim, layout="bshd")
     benchmark("triton-bhsd", pure_triton_attn_bhsd, batch_size, sequence_length, num_heads, head_dim, layout="bhsd")
