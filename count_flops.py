@@ -10,8 +10,8 @@ def flops_formulate(batch_size, sequence_length, num_heads, head_dim):
 
 if __name__ == "__main__":
     batch_size = 2
-    sequence_length = 16384
-    num_heads = 24
+    sequence_length = 24
+    num_heads = 4429
     head_dim = 64
     shapes = (batch_size, sequence_length, num_heads, head_dim)
     device = "cuda"
