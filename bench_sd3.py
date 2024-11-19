@@ -17,7 +17,7 @@ from xformers_impl import (
     # xformers_attn_triton_s32,
     # xformers_attn_triton_s64,
 )
-from pt_impl import pt_sdpa_cpu, pt_flash, pt_xformers
+from pt_impl import pt_sdpa_cpu, pt_flash, pt_xformers, pt_math
 from pure_triton_impl import pure_triton_attn_bshd, pure_triton_attn_bhsd
 
 
@@ -90,5 +90,6 @@ if __name__ == "__main__":
     benchmark("pytorch-default", F.scaled_dot_product_attention, batch_size, sequence_length, num_heads, head_dim, layout="bhsd")
     benchmark("pytorch-flash", pt_flash, batch_size, sequence_length, num_heads, head_dim, layout="bhsd")
     benchmark("pytorch-xformers", pt_xformers, batch_size, sequence_length, num_heads, head_dim, layout="bhsd")
+    # benchmark("pytorch-math", pt_math, batch_size, sequence_length, num_heads, head_dim, layout="bhsd")
 
 

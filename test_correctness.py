@@ -3,7 +3,7 @@ from torch.nn import functional as F
 
 from flash_attn import flash_attn_func
 from xformers_impl import xformers_attn_ck, xformers_attn_triton
-from pt_impl import pt_flash, pt_xformers
+from pt_impl import pt_flash, pt_xformers, pt_math
 from pure_triton_impl import pure_triton_attn_bshd, pure_triton_attn_bhsd
 
 torch.manual_seed(42)
@@ -31,6 +31,7 @@ def main():
     pt_output = F.scaled_dot_product_attention(q, k, v)
     pt_flash_output = pt_flash(q, k, v)
     pt_xformers_output = pt_xformers(q, k, v)
+    pt_math_output = pt_math(q, k, v)
 
     xformers_ck_output = xformers_attn_ck(q.transpose(1, 2), k.transpose(1, 2), v.transpose(1, 2)).transpose(1, 2)
     xformers_triton_output = xformers_attn_triton(q.transpose(1, 2), k.transpose(1, 2), v.transpose(1, 2)).transpose(1, 2)
@@ -43,6 +44,7 @@ def main():
     print(f"{torch.allclose(pt_output.cpu(), expected, rtol=rtol, atol=atol)=}")
     print(f"{torch.allclose(pt_flash_output.cpu(), expected, rtol=rtol, atol=atol)=}")
     print(f"{torch.allclose(pt_xformers_output.cpu(), expected, rtol=rtol, atol=atol)=}")
+    print(f"{torch.allclose(pt_math_output.cpu(), expected, rtol=rtol, atol=atol)=}")
 
     print(f"{torch.allclose(xformers_ck_output.cpu(), expected, rtol=rtol, atol=atol)=}")
     print(f"{torch.allclose(xformers_triton_output.cpu(), expected, rtol=rtol, atol=atol)=}")
