@@ -6,11 +6,7 @@ from flash_attn import flash_attn_func
 from flash_impl import flash3_attn
 from xformers_impl import xformers_attn_ck, xformers_attn_cutlass, xformers_attn_triton
 from pt_impl import pt_flash, pt_xformers, pt_math
-
-if is_rocm():
-    from pure_triton_impl import pure_triton_attn_bshd, pure_triton_attn_bhsd
-else: 
-    pure_triton_attn_bshd, pure_triton_attn_bhsd = None, None
+from pure_triton_impl import pure_triton_attn_bshd, pure_triton_attn_bhsd
 
 torch.manual_seed(42)
 
@@ -50,8 +46,10 @@ def main():
     flash_output = flash_attn_func(q.transpose(1, 2), k.transpose(1, 2), v.transpose(1, 2)).transpose(1, 2)
     flash3_output = flash3_attn(q.transpose(1, 2), k.transpose(1, 2), v.transpose(1, 2)).transpose(1, 2)
 
-    if is_rocm():
+    if pure_triton_attn_bshd is not None:
         triton_bshd_output = pure_triton_attn_bshd(q.transpose(1, 2), k.transpose(1, 2), v.transpose(1, 2)).transpose(1, 2)
+
+    if pure_triton_attn_bhsd is not None:
         triton_bhsd_output = pure_triton_attn_bhsd(q, k, v)
 
     print(f"{torch.allclose(pt_output.cpu(), expected, rtol=rtol, atol=atol)=}")
@@ -69,8 +67,10 @@ def main():
     
     print(f"{torch.allclose(flash_output.cpu(), expected, rtol=rtol, atol=atol)=}")
 
-    if is_rocm():
+    if pure_triton_attn_bshd is not None:
         print(f"{torch.allclose(triton_bshd_output.cpu(), expected, rtol=rtol, atol=atol)=}")
+
+    if pure_triton_attn_bhsd is not None:
         print(f"{torch.allclose(triton_bhsd_output.cpu(), expected, rtol=rtol, atol=atol)=}")
     
 
