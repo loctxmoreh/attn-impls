@@ -19,7 +19,12 @@ from xformers_impl import (
     # xformers_attn_triton_s64,
 )
 from pt_impl import pt_sdpa_cpu, pt_flash, pt_xformers, pt_math
-# from pure_triton_impl import pure_triton_attn_bshd, pure_triton_attn_bhsd
+from flash_impl import flash3_attn
+
+if is_rocm():
+    from pure_triton_impl import pure_triton_attn_bshd, pure_triton_attn_bhsd
+else:
+    pure_triton_attn_bshd, pure_triton_attn_bhsd = None, None
 
 
 # wrap flash_attn_triton to pass sm_scale
@@ -72,6 +77,8 @@ if __name__ == "__main__":
 
     benchmark("flash_attn-ck", flash_attn_func, batch_size, sequence_length, num_heads, head_dim, layout="bshd")
     # benchmark("flash_attn-triton", flash_attn_triton, batch_size, sequence_length, num_heads, head_dim) # Compile error
+    if flash3_attn is not None:
+        benchmark("flash_attn3", flash3_attn, batch_size, sequence_length, num_heads, head_dim, layout="bshd")
 
     benchmark("xformers-default", xops.memory_efficient_attention, batch_size, sequence_length, num_heads, head_dim, layout="bshd")
     if is_rocm():
@@ -88,8 +95,10 @@ if __name__ == "__main__":
     # benchmark("xformers-triton-s32", xformers_attn_triton_s32, batch_size, sequence_length, num_heads, head_dim, layout="bshd")
     # benchmark("xformers-triton-s64", xformers_attn_triton_s64, batch_size, sequence_length, num_heads, head_dim, layout="bshd")
 
-    # benchmark("triton-bshd", pure_triton_attn_bshd, batch_size, sequence_length, num_heads, head_dim, layout="bshd")
-    # benchmark("triton-bhsd", pure_triton_attn_bhsd, batch_size, sequence_length, num_heads, head_dim, layout="bhsd")
+    if is_rocm():
+        # These impls are copied from ROCm's repo
+        benchmark("triton-bshd", pure_triton_attn_bshd, batch_size, sequence_length, num_heads, head_dim, layout="bshd")
+        benchmark("triton-bhsd", pure_triton_attn_bhsd, batch_size, sequence_length, num_heads, head_dim, layout="bhsd")
 
     benchmark("pytorch-default", F.scaled_dot_product_attention, batch_size, sequence_length, num_heads, head_dim, layout="bhsd")
     benchmark("pytorch-flash", pt_flash, batch_size, sequence_length, num_heads, head_dim, layout="bhsd")
