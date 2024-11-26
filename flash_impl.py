@@ -6,8 +6,30 @@ from flash_attn import flash_attn_func
 from flash_attn.flash_attn_triton_og import attention as flash_attn_triton_og
 from flash_attn.flash_attn_triton import flash_attn_func as flash_attn_triton
 
-from flash_attn_triton import MetaData
-from flash_attn_triton import attention as pure_triton_attn
+from common import is_rocm, is_hopper
+
+if is_rocm():
+    from flash_attn_triton import MetaData
+    from flash_attn_triton import attention as pure_triton_attn
+
+
+if is_hopper():
+    try: 
+        from flashattn_hopper_cuda import fwd as fa3_fwd
+
+        def flash3_attn(q, k, v):
+            softmax_scale = 1.0 / (q.shape[-1] ** 0.5)
+            descale_q, descale_k, descale_v = None, None, None
+            causal = False
+            window_size = (-1, -1)
+            gqa_parallel = False
+            out, *_ = fa3_fwd(q, k, v, None, softmax_scale, descale_q, descale_k,
+                           descale_v, causal, window_size[0], window_size[1],
+                           gqa_parallel,)
+            return out
+
+    except ImportError:
+        flash3_attn = None
 
 
 if __name__ == "__main__":
