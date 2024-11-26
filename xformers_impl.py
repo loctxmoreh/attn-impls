@@ -3,7 +3,7 @@ from functools import partial
 import torch 
 from torch.nn import functional as F
 from xformers import ops as xops
-from xformers.ops.fmha import MemoryEfficientAttentionCkOp
+from xformers.ops.fmha import MemoryEfficientAttentionCkOp, MemoryEfficientAttentionCutlassOp
 from xformers.ops.fmha.triton_splitk import (
     FwOp_S1 as TritonFw_S1,
     FwOp_S2 as TritonFw_S2,
@@ -25,6 +25,7 @@ MemoryEfficientAttentionTritonS64_Op = (TritonFw_S64, )
 MemoryEfficientAttentionTritonS128_Op = (TritonFw_S128, )
 
 xformers_attn_ck = partial(xops.memory_efficient_attention, op=MemoryEfficientAttentionCkOp)
+xformers_attn_cutlass = partial(xops.memory_efficient_attention, op=MemoryEfficientAttentionCutlassOp)
 
 xformers_attn_triton_s1 = partial(xops.memory_efficient_attention, op=MemoryEfficientAttentionTritonS1_Op)
 xformers_attn_triton_s2 = partial(xops.memory_efficient_attention, op=MemoryEfficientAttentionTritonS2_Op)
