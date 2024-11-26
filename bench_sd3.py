@@ -7,7 +7,8 @@ from flash_attn import flash_attn_func
 from flash_attn.flash_attn_triton_og import attention as flash_attn_triton_func
 import triton
 
-from xformers_impl import xformers_attn_ck
+from common import is_cuda, is_rocm, is_hopper
+from xformers_impl import xformers_attn_ck, xformers_attn_cutlass
 from xformers_impl import (
     xformers_attn_triton_s1 as xformers_attn_triton,
     # xformers_attn_triton_s2,
@@ -18,7 +19,7 @@ from xformers_impl import (
     # xformers_attn_triton_s64,
 )
 from pt_impl import pt_sdpa_cpu, pt_flash, pt_xformers, pt_math
-from pure_triton_impl import pure_triton_attn_bshd, pure_triton_attn_bhsd
+# from pure_triton_impl import pure_triton_attn_bshd, pure_triton_attn_bhsd
 
 
 # wrap flash_attn_triton to pass sm_scale
@@ -48,7 +49,7 @@ def prepare_input(bs, seq_len, num_heads, head_dim, layout="bshd", device="cuda"
     return q, k, v
 
 
-def benchmark(name, func, batch_size, sequence_length, num_heads, head_dim, layout="bshd", device='cuda'):
+def benchmark(name, func, batch_size, sequence_length, num_heads, head_dim, layout="bshd", device="cuda"):
     WARM_UP = 25
     REP = 100
     query, key, value = prepare_input(batch_size, sequence_length, num_heads,
@@ -73,7 +74,10 @@ if __name__ == "__main__":
     # benchmark("flash_attn-triton", flash_attn_triton, batch_size, sequence_length, num_heads, head_dim) # Compile error
 
     benchmark("xformers-default", xops.memory_efficient_attention, batch_size, sequence_length, num_heads, head_dim, layout="bshd")
-    benchmark("xformers-ck", xformers_attn_ck, batch_size, sequence_length, num_heads, head_dim, layout="bshd")
+    if is_rocm():
+        benchmark("xformers-ck", xformers_attn_ck, batch_size, sequence_length, num_heads, head_dim, layout="bshd")
+    if is_cuda():
+        benchmark("xformers-cutlass", xformers_attn_cutlass, batch_size, sequence_length, num_heads, head_dim, layout="bshd")
     benchmark("xformers-triton", xformers_attn_triton, batch_size, sequence_length, num_heads, head_dim, layout="bshd")
 
     # These ones perform so bad, commented out
@@ -84,8 +88,8 @@ if __name__ == "__main__":
     # benchmark("xformers-triton-s32", xformers_attn_triton_s32, batch_size, sequence_length, num_heads, head_dim, layout="bshd")
     # benchmark("xformers-triton-s64", xformers_attn_triton_s64, batch_size, sequence_length, num_heads, head_dim, layout="bshd")
 
-    benchmark("triton-bshd", pure_triton_attn_bshd, batch_size, sequence_length, num_heads, head_dim, layout="bshd")
-    benchmark("triton-bhsd", pure_triton_attn_bhsd, batch_size, sequence_length, num_heads, head_dim, layout="bhsd")
+    # benchmark("triton-bshd", pure_triton_attn_bshd, batch_size, sequence_length, num_heads, head_dim, layout="bshd")
+    # benchmark("triton-bhsd", pure_triton_attn_bhsd, batch_size, sequence_length, num_heads, head_dim, layout="bhsd")
 
     benchmark("pytorch-default", F.scaled_dot_product_attention, batch_size, sequence_length, num_heads, head_dim, layout="bhsd")
     benchmark("pytorch-flash", pt_flash, batch_size, sequence_length, num_heads, head_dim, layout="bhsd")
