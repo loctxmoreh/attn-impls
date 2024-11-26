@@ -63,8 +63,8 @@ def benchmark(name, func, batch_size, sequence_length, num_heads, head_dim, layo
 if __name__ == "__main__":
     # SD3 input shape
     batch_size = 2
-    sequence_length = 24
-    num_heads = 4429
+    sequence_length = 4429
+    num_heads = 24
     head_dim = 64
 
     benchmark("cpu-impl", pt_sdpa_cpu, batch_size, sequence_length, num_heads, head_dim, device="cpu")
