@@ -30,6 +30,8 @@ if is_hopper():
 
     except ImportError:
         flash3_attn = None
+else:
+    flash3_attn = None
 
 
 if __name__ == "__main__":

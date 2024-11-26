@@ -44,7 +44,9 @@ def main():
     xformers_triton_output = xformers_attn_triton(q.transpose(1, 2), k.transpose(1, 2), v.transpose(1, 2)).transpose(1, 2)
 
     flash_output = flash_attn_func(q.transpose(1, 2), k.transpose(1, 2), v.transpose(1, 2)).transpose(1, 2)
-    flash3_output = flash3_attn(q.transpose(1, 2), k.transpose(1, 2), v.transpose(1, 2)).transpose(1, 2)
+    
+    if flash3_attn is not None:
+        flash3_output = flash3_attn(q.transpose(1, 2), k.transpose(1, 2), v.transpose(1, 2)).transpose(1, 2)
 
     if pure_triton_attn_bshd is not None:
         triton_bshd_output = pure_triton_attn_bshd(q.transpose(1, 2), k.transpose(1, 2), v.transpose(1, 2)).transpose(1, 2)
@@ -66,6 +68,9 @@ def main():
     print(f"{torch.allclose(xformers_triton_output.cpu(), expected, rtol=rtol, atol=atol)=}")
     
     print(f"{torch.allclose(flash_output.cpu(), expected, rtol=rtol, atol=atol)=}")
+
+    if flash3_attn is not None:
+        print(f"{torch.allclose(flash3_output.cpu(), expected, rtol=rtol, atol=atol)=}")
 
     if pure_triton_attn_bshd is not None:
         print(f"{torch.allclose(triton_bshd_output.cpu(), expected, rtol=rtol, atol=atol)=}")
