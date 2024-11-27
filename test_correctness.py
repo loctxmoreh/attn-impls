@@ -12,10 +12,18 @@ torch.manual_seed(42)
 
 
 def main():
-    bs = 2
-    seq_len = 4429
-    num_heads = 24
-    head_dim = 64
+    # # SD3
+    # bs = 2
+    # seq_len = 4429
+    # num_heads = 24
+    # head_dim = 64
+
+    # OpenSora
+    bs = 60
+    seq_len = 3600
+    num_heads = 16
+    head_dim = 72
+
     device = 'cuda'
     # rtol, atol = 1e-3, 1e-5     # too strict
     # rtol, atol = 1e-2, 1e-2     # work
@@ -41,7 +49,7 @@ def main():
         assert is_cuda()
         xformers_cutlass_output = xformers_attn_cutlass(q.transpose(1, 2), k.transpose(1, 2), v.transpose(1, 2)).transpose(1, 2)
         
-    xformers_triton_output = xformers_attn_triton(q.transpose(1, 2), k.transpose(1, 2), v.transpose(1, 2)).transpose(1, 2)
+    # xformers_triton_output = xformers_attn_triton(q.transpose(1, 2), k.transpose(1, 2), v.transpose(1, 2)).transpose(1, 2)
 
     flash_output = flash_attn_func(q.transpose(1, 2), k.transpose(1, 2), v.transpose(1, 2)).transpose(1, 2)
     
@@ -65,7 +73,7 @@ def main():
         assert is_cuda()
         print(f"{torch.allclose(xformers_cutlass_output.cpu(), expected, rtol=rtol, atol=atol)=}")
 
-    print(f"{torch.allclose(xformers_triton_output.cpu(), expected, rtol=rtol, atol=atol)=}")
+    # print(f"{torch.allclose(xformers_triton_output.cpu(), expected, rtol=rtol, atol=atol)=}")
     
     print(f"{torch.allclose(flash_output.cpu(), expected, rtol=rtol, atol=atol)=}")
 

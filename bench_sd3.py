@@ -63,15 +63,21 @@ def benchmark(name, func, batch_size, sequence_length, num_heads, head_dim, layo
 
 
 if __name__ == "__main__":
-    # SD3 input shape
-    batch_size = 2
-    sequence_length = 4429
-    num_heads = 24
-    head_dim = 64
+    # # SD3 input shape
+    # batch_size = 2
+    # sequence_length = 4429
+    # num_heads = 24
+    # head_dim = 64
+
+    # OpenSora input shape
+    batch_size = 60
+    sequence_length = 3600
+    num_heads = 16
+    head_dim = 72
 
     benchmark("cpu-impl", pt_sdpa_cpu, batch_size, sequence_length, num_heads, head_dim, device="cpu")
 
-    benchmark("flash_attn-ck", flash_attn_func, batch_size, sequence_length, num_heads, head_dim, layout="bshd")
+    benchmark("flash_attn", flash_attn_func, batch_size, sequence_length, num_heads, head_dim, layout="bshd")
     # benchmark("flash_attn-triton", flash_attn_triton, batch_size, sequence_length, num_heads, head_dim) # Compile error
     if flash3_attn is not None:
         benchmark("flash_attn3", flash3_attn, batch_size, sequence_length, num_heads, head_dim, layout="bshd")
@@ -81,7 +87,8 @@ if __name__ == "__main__":
         benchmark("xformers-ck", xformers_attn_ck, batch_size, sequence_length, num_heads, head_dim, layout="bshd")
     if is_cuda():
         benchmark("xformers-cutlass", xformers_attn_cutlass, batch_size, sequence_length, num_heads, head_dim, layout="bshd")
-    benchmark("xformers-triton", xformers_attn_triton, batch_size, sequence_length, num_heads, head_dim, layout="bshd")
+
+    # benchmark("xformers-triton", xformers_attn_triton, batch_size, sequence_length, num_heads, head_dim, layout="bshd")
 
     # These ones perform so bad, commented out
     # benchmark("xformers-triton-s2", xformers_attn_triton_s2, batch_size, sequence_length, num_heads, head_dim, layout="bshd")
