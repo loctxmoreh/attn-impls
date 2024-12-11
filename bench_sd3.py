@@ -21,7 +21,7 @@ from xformers_impl import (
 from pt_impl import pt_sdpa_cpu, pt_flash, pt_xformers, pt_math
 from flash_impl import flash3_attn
 from pure_triton_impl import pure_triton_attn_bshd, pure_triton_attn_bhsd
-
+from int8_attention import int8_attention
 
 # wrap flash_attn_triton to pass sm_scale
 def flash_attn_triton(q, k, v):
@@ -50,14 +50,27 @@ def prepare_input(bs, seq_len, num_heads, head_dim, layout="bshd", device="cuda"
     return q, k, v
 
 
-def benchmark(name, func, batch_size, sequence_length, num_heads, head_dim, layout="bshd", device="cuda"):
+def quant_pertoken(X):
+    X_max, cache = torch.abs(X).max(dim=-1)
+    X_scale = X_max / 127
+    ret = torch.round(X / X_scale[:, :, :, None]).to(torch.int8)
+    return ret, X_scale
+
+
+def benchmark(name, func, batch_size, sequence_length, num_heads, head_dim, layout="bshd", device="cuda", **kwargs):
     WARM_UP = 25
     REP = 100
     query, key, value = prepare_input(batch_size, sequence_length, num_heads,
                                       head_dim, layout=layout, device=device)
 
-    ms = triton.testing.do_bench(partial(func, query, key, value),
+    if name == "int-flash-attention":
+        qq, qs = quant_pertoken(query)
+        kq, ks = quant_pertoken(key)
+        ms = triton.testing.do_bench(partial(func, qq, kq, value, qs, ks, **kwargs),
                                  warmup=WARM_UP, rep=REP, return_mode="mean")
+    else:
+        ms = triton.testing.do_bench(partial(func, query, key, value, **kwargs),
+                                    warmup=WARM_UP, rep=REP, return_mode="mean")
     tflops = calculate_tflops(ms * 1e-3, batch_size, sequence_length, num_heads, head_dim)
     print(f"{name:<20} \tMilisec={ms:.6f} \tTFLOPS={tflops:.6f}")
 
@@ -100,6 +113,7 @@ if __name__ == "__main__":
     benchmark("pytorch-default", F.scaled_dot_product_attention, batch_size, sequence_length, num_heads, head_dim, layout="bhsd")
     benchmark("pytorch-flash", pt_flash, batch_size, sequence_length, num_heads, head_dim, layout="bhsd")
     benchmark("pytorch-xformers", pt_xformers, batch_size, sequence_length, num_heads, head_dim, layout="bhsd")
+    benchmark("int-flash-attention", int8_attention, batch_size, sequence_length, num_heads, head_dim, layout="bhsd", causal=False, sm_scale=0.125)
     # benchmark("pytorch-math", pt_math, batch_size, sequence_length, num_heads, head_dim, layout="bhsd")
 
 
