@@ -63,11 +63,15 @@ def benchmark(name, func, batch_size, sequence_length, num_heads, head_dim, layo
     query, key, value = prepare_input(batch_size, sequence_length, num_heads,
                                       head_dim, layout=layout, device=device)
 
-    if name == "int-flash-attention":
+    if func == int8_attention:
         qq, qs = quant_pertoken(query)
         kq, ks = quant_pertoken(key)
         ms = triton.testing.do_bench(partial(func, qq, kq, value, qs, ks, **kwargs),
                                  warmup=WARM_UP, rep=REP, return_mode="mean")
+    elif func == sageattn:
+        layout = "NHD" if layout == "bhsd" else "HND"
+        ms = triton.testing.do_bench(partial(func, query, key, value, layout, **kwargs),
+                                    warmup=WARM_UP, rep=REP, return_mode="mean")
     else:
         ms = triton.testing.do_bench(partial(func, query, key, value, **kwargs),
                                     warmup=WARM_UP, rep=REP, return_mode="mean")
@@ -114,7 +118,14 @@ if __name__ == "__main__":
     benchmark("pytorch-flash", pt_flash, batch_size, sequence_length, num_heads, head_dim, layout="bhsd")
     benchmark("pytorch-xformers", pt_xformers, batch_size, sequence_length, num_heads, head_dim, layout="bhsd")
     benchmark("int-flash-attention", int8_attention, batch_size, sequence_length, num_heads, head_dim, layout="bhsd", causal=False, sm_scale=0.125)
-    benchmark("sageattn", sageattn, batch_size, sequence_length, num_heads, head_dim, layout="bhsd")
+    benchmark("sageattn-hnd-smooth_k-use_fp16_pv_accum", sageattn, batch_size, sequence_length, num_heads, head_dim, use_fp16_pv_accum=True, layout="bshd")
+    benchmark("sageattn-hnd-smooth_k", sageattn, batch_size, sequence_length, num_heads, head_dim, use_fp16_pv_accum=False, layout="bshd")
+    benchmark("sageattn-hnd-use_fp16_pv_accum", sageattn, batch_size, sequence_length, num_heads, head_dim, use_fp16_pv_accum=True, smooth_k=False, layout="bshd")
+    benchmark("sageattn-hnd", sageattn, batch_size, sequence_length, num_heads, head_dim, use_fp16_pv_accum=False, smooth_k=False, layout="bshd")
+
+    benchmark("sageattn-nhd-smooth_k-use_fp16_pv_accum", sageattn, batch_size, sequence_length, num_heads, head_dim, use_fp16_pv_accum=True, layout="bhsd")
+    benchmark("sageattn-nhd-smooth_k", sageattn, batch_size, sequence_length, num_heads, head_dim, use_fp16_pv_accum=False, layout="bhsd")
+    benchmark("sageattn-nhd-use_fp16_pv_accum", sageattn, batch_size, sequence_length, num_heads, head_dim, use_fp16_pv_accum=True, smooth_k=False, layout="bhsd")
+    benchmark("sageattn-nhd", sageattn, batch_size, sequence_length, num_heads, head_dim, use_fp16_pv_accum=False, smooth_k=False, layout="bhsd")
+
     # benchmark("pytorch-math", pt_math, batch_size, sequence_length, num_heads, head_dim, layout="bhsd")
-
-
