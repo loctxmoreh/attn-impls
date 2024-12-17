@@ -1,5 +1,4 @@
 from functools import partial
-
 import torch
 from torch.nn import functional as F
 from xformers import ops as xops
@@ -22,6 +21,7 @@ from pt_impl import pt_sdpa_cpu, pt_flash, pt_xformers, pt_math
 from flash_impl import flash3_attn
 from pure_triton_impl import pure_triton_attn_bshd, pure_triton_attn_bhsd
 from int8_attention import int8_attention
+from sageattention import sageattn
 
 # wrap flash_attn_triton to pass sm_scale
 def flash_attn_triton(q, k, v):
@@ -114,6 +114,7 @@ if __name__ == "__main__":
     benchmark("pytorch-flash", pt_flash, batch_size, sequence_length, num_heads, head_dim, layout="bhsd")
     benchmark("pytorch-xformers", pt_xformers, batch_size, sequence_length, num_heads, head_dim, layout="bhsd")
     benchmark("int-flash-attention", int8_attention, batch_size, sequence_length, num_heads, head_dim, layout="bhsd", causal=False, sm_scale=0.125)
+    benchmark("sageattn", sageattn, batch_size, sequence_length, num_heads, head_dim, layout="bhsd")
     # benchmark("pytorch-math", pt_math, batch_size, sequence_length, num_heads, head_dim, layout="bhsd")
 
 
