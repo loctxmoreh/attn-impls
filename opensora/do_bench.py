@@ -31,6 +31,32 @@ if __name__ == "__main__":
     for attn_name, attn_config in ATTENTION_CONFIGS.items():
         print("\nAttention: {}".format(attn_name))
 
+        # pytorch impl
+        benchmark_attn(
+            "pytorch-default",
+            F.scaled_dot_product_attention,
+            attn_config,
+            layout="bhsd",
+            device=device,
+            dtype=dtype,
+        )
+        benchmark_attn(
+            "pytorch-flash",
+            pt_flash,
+            attn_config,
+            layout="bhsd",
+            device=device,
+            dtype=dtype,
+        )
+        benchmark_attn(
+            "pytorch-xformers",
+            pt_xformers,
+            attn_config,
+            layout="bhsd",
+            device=device,
+            dtype=dtype,
+        )
+
         # flash-attn
         benchmark_attn(
             "flash_attn-ck",
@@ -107,29 +133,3 @@ if __name__ == "__main__":
                 device=device,
                 dtype=dtype,
             )
-
-        # pytorch impl
-        benchmark_attn(
-            "pytorch-default",
-            F.scaled_dot_product_attention,
-            attn_config,
-            layout="bhsd",
-            device=device,
-            dtype=dtype,
-        )
-        benchmark_attn(
-            "pytorch-flash",
-            pt_flash,
-            attn_config,
-            layout="bhsd",
-            device=device,
-            dtype=dtype,
-        )
-        benchmark_attn(
-            "pytorch-xformers",
-            pt_xformers,
-            attn_config,
-            layout="bhsd",
-            device=device,
-            dtype=dtype,
-        )
