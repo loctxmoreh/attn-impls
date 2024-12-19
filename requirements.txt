@@ -1,7 +1,7 @@
 --index-url https://download.pytorch.org/whl/rocm6.1
-torch>=2.0.0
-torchvision
-torchaudio
+torch==2.5.0
+torchvision==0.20.0
+torchaudio==2.5.0
 triton
 pytorch-triton-rocm
 xformers
