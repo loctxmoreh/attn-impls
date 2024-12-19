@@ -1,4 +1,9 @@
+from functools import partial
+
 import torch
+import triton
+
+from opensora.utils import calculate_tflops, get_error_message
 
 # All Attention configs in Open-Sora
 ATTENTION_CONFIGS = {
@@ -36,7 +41,7 @@ ATTENTION_CONFIGS = {
 }
 
 
-def prepare_attn_input(attn_config, device="cuda", dtype=torch.float16):
+def prepare_attn_input(attn_config, layout="bhsd", device="cuda", dtype=torch.float16):
     """Prepare q, k, v and attention bias in terms of attention config.
 
     Returns:
@@ -48,35 +53,63 @@ def prepare_attn_input(attn_config, device="cuda", dtype=torch.float16):
     # Prepare qkv
     for name, config in attn_config.items():
         if "q" in name:
-            q = torch.randn(
-                config["batch_size"],
-                config["num_heads"],
-                config["seq_len"],
-                config["head_dim"],
-                device=device,
-                dtype=dtype,
-            )
+            if layout == "bhsd":
+                q = torch.randn(
+                    config["batch_size"],
+                    config["num_heads"],
+                    config["seq_len"],
+                    config["head_dim"],
+                    device=device,
+                    dtype=dtype,
+                )
+            else:  # bshd
+                q = torch.randn(
+                    config["batch_size"],
+                    config["seq_len"],
+                    config["num_heads"],
+                    config["head_dim"],
+                    device=device,
+                    dtype=dtype,
+                )
             q_seqlen = config["seq_len"]
             batch_size = config["batch_size"]
             num_heads = config["num_heads"]
 
         if "kv" in name:
-            k = torch.randn(
-                config["batch_size"],
-                config["num_heads"],
-                config["seq_len"],
-                config["head_dim"],
-                device=device,
-                dtype=dtype,
-            )
-            v = torch.randn(
-                config["batch_size"],
-                config["num_heads"],
-                config["seq_len"],
-                config["head_dim"],
-                device=device,
-                dtype=dtype,
-            )
+            if layout == "bhsd":
+                k = torch.randn(
+                    config["batch_size"],
+                    config["num_heads"],
+                    config["seq_len"],
+                    config["head_dim"],
+                    device=device,
+                    dtype=dtype,
+                )
+                v = torch.randn(
+                    config["batch_size"],
+                    config["num_heads"],
+                    config["seq_len"],
+                    config["head_dim"],
+                    device=device,
+                    dtype=dtype,
+                )
+            else:  # bshd
+                k = torch.randn(
+                    config["batch_size"],
+                    config["seq_len"],
+                    config["num_heads"],
+                    config["head_dim"],
+                    device=device,
+                    dtype=dtype,
+                )
+                v = torch.randn(
+                    config["batch_size"],
+                    config["seq_len"],
+                    config["num_heads"],
+                    config["head_dim"],
+                    device=device,
+                    dtype=dtype,
+                )
             kv_seqlen = config["seq_len"]
 
     if "attn_bias" in attn_config and attn_config["attn_bias"]:
@@ -91,3 +124,34 @@ def prepare_attn_input(attn_config, device="cuda", dtype=torch.float16):
         attn_bias = random_mask.to(dtype)
 
     return q, k, v, attn_bias
+
+
+def benchmark_attn(
+    name, func, attn_config, layout="bshd", device="cuda", dtype=torch.float16
+):
+    WARM_UP = 25
+    REP = 100
+    query, key, value, attn_bias = prepare_attn_input(
+        attn_config, layout, device, dtype
+    )
+
+    if attn_bias is None:
+        func = partial(func, query, key, value)
+    else:
+        func = partial(func, query, key, value, attn_bias)
+
+    try:
+        ms = triton.testing.do_bench(func, warmup=WARM_UP, rep=REP, return_mode="mean")
+
+        tflops = calculate_tflops(
+            ms * 1e-3,
+            query.shape[0],
+            query.shape[1] if layout == "bshd" else query.shape[2],
+            key.shape[1] if layout == "bshd" else key.shape[2],
+            query.shape[2] if layout == "bshd" else query.shape[1],
+            query.shape[3],
+        )
+        print(f"{name:<20} \tMilisec={ms:.6f} \tTFLOPS={tflops:.6f}")
+
+    except Exception as e:
+        print(f"{name:<20} \tException: {get_error_message(e)}")

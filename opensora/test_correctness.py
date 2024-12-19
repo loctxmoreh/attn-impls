@@ -28,9 +28,11 @@ def main():
     print(f"{device=}, {dtype=}")
     print(f"{rtol=}, {atol=}")
 
-    for name, attn_config in ATTENTION_CONFIGS.items():
-        print("\nAttention: {}".format(name))
-        q, k, v, attn_bias = prepare_attn_input(attn_config, device=device, dtype=dtype)
+    for attn_name, attn_config in ATTENTION_CONFIGS.items():
+        print("\nAttention: {}".format(attn_name))
+        q, k, v, attn_bias = prepare_attn_input(
+            attn_config, layout="bhsd", device=device, dtype=dtype
+        )
         try:
             # can't use CPU impl for attn_bias
             expected = F.scaled_dot_product_attention(q, k, v, attn_mask=attn_bias)
