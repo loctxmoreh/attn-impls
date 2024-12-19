@@ -18,7 +18,7 @@ pip install pytest matplotlib pandas
 
 ```bash 
 conda create -n attn-cuda python=3.10 -y && conda activate attn-cuda 
-pip install torch==2.5.0 torchvision==0.20.0 torchaudio==2.5.0 triton xformers --index-url https://download.pytorch.org/whl/cu124
+pip install torch==2.5.0 torchvision==0.20.0 torchaudio==2.5.0 triton xformers --index-url https://download.pytorch.org/whl/cu124 # cu121 for A100
 
 # install flash-attn
 pip install --no-build-isolation git+https://github.com/Dao-AILab/flash-attention.git
