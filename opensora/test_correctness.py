@@ -14,7 +14,7 @@ from common import is_cuda, is_rocm
 from flash_impl import flash3_attn
 from opensora.attention import ATTENTION_CONFIGS, prepare_attn_input
 from opensora.utils import get_error_message
-from pt_impl import pt_flash, pt_sdpa_cpu, pt_xformers
+from pt_impl import pt_flash, pt_xformers
 from pure_triton_impl import pure_triton_attn_bhsd, pure_triton_attn_bshd
 from xformers_impl import xformers_attn_ck, xformers_attn_cutlass, xformers_attn_triton
 
@@ -55,10 +55,6 @@ def main():
             )
         except Exception as e:
             print(f"pt_xformers_output: {get_error_message(e)}")
-
-        # Error: out-of-memory
-        # pt_math_output = pt_math(q, k, v, attn_bias=attn_bias)
-        # print(f"pt_math_output: {torch.allclose(pt_math_output, expected, rtol=rtol, atol=atol)}")
 
         # xformers CK/cutlass
         if is_rocm():
@@ -144,8 +140,6 @@ def main():
         if pure_triton_attn_bhsd is not None and attn_bias is None:
             try:
                 triton_bhsd_output = pure_triton_attn_bhsd(q, k, v)
-                from loguru import logger
-
                 print(
                     f"triton_bhsd_output: {torch.allclose(triton_bhsd_output, expected, rtol=rtol, atol=atol)}"
                 )
