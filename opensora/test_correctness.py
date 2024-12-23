@@ -11,12 +11,31 @@ from flash_attn import flash_attn_func
 from torch.nn import functional as F
 
 from common import is_cuda, is_rocm
-from flash_impl import flash3_attn
+from flash_impl import flash3_attn, flash3_attn_padded, flash_attn_padded
 from opensora.attention import ATTENTION_CONFIGS, prepare_attn_input
 from opensora.utils import get_error_message
-from pt_impl import pt_flash, pt_padded, pt_xformers
-from pure_triton_impl import pure_triton_attn_bhsd, pure_triton_attn_bshd
-from xformers_impl import xformers_attn_ck, xformers_attn_cutlass, xformers_attn_triton
+from pt_impl import (
+    pt_flash,
+    pt_flash_padded,
+    pt_padded,
+    pt_xformers,
+    pt_xformers_padded,
+)
+from pure_triton_impl import (
+    pure_triton_attn_bhsd,
+    pure_triton_attn_bshd,
+    pure_triton_bhsd_padded,
+    pure_triton_bshd_padded,
+)
+from xformers_impl import (
+    xformers_attn_ck,
+    xformers_attn_cutlass,
+    xformers_attn_triton,
+    xformers_ck_padded,
+    xformers_cutlass_padded,
+    xformers_padded,
+    xformers_triton_padded,
+)
 
 torch.manual_seed(42)
 warnings.filterwarnings("ignore", category=UserWarning)  # ignore warnings
@@ -57,12 +76,28 @@ def main():
             print(f"pt_flash_output: {get_error_message(e)}")
 
         try:
+            pt_flash_padded_output = pt_flash_padded(q, k, v, attn_bias=attn_bias)
+            print(
+                f"pt_flash_padded_output: {torch.allclose(pt_flash_padded_output, expected, rtol=rtol, atol=atol)}"
+            )
+        except Exception as e:
+            print(f"pt_flash_padded_output: {get_error_message(e)}")
+
+        try:
             pt_xformers_output = pt_xformers(q, k, v, attn_bias=attn_bias)
             print(
                 f"pt_xformers_output: {torch.allclose(pt_xformers_output, expected, rtol=rtol, atol=atol)}"
             )
         except Exception as e:
             print(f"pt_xformers_output: {get_error_message(e)}")
+
+        try:
+            pt_xformers_padded_output = pt_xformers_padded(q, k, v, attn_bias=attn_bias)
+            print(
+                f"pt_xformers_padded_output: {torch.allclose(pt_xformers_padded_output, expected, rtol=rtol, atol=atol)}"
+            )
+        except Exception as e:
+            print(f"pt_xformers_padded_output: {get_error_message(e)}")
 
         # xformers CK/cutlass
         if is_rocm():
@@ -78,6 +113,19 @@ def main():
                 )
             except Exception as e:
                 print(f"xformers_ck_output: {get_error_message(e)}")
+
+            try:
+                xformers_ck_padded_output = xformers_ck_padded(
+                    q.transpose(1, 2),
+                    k.transpose(1, 2),
+                    v.transpose(1, 2),
+                    attn_bias=attn_bias,
+                ).transpose(1, 2)
+                print(
+                    f"xformers_ck_padded_output: {torch.allclose(xformers_ck_padded_output, expected, rtol=rtol, atol=atol)}"
+                )
+            except Exception as e:
+                print(f"xformers_ck_padded_output: {get_error_message(e)}")
         else:
             assert is_cuda()
 
@@ -94,6 +142,19 @@ def main():
             except Exception as e:
                 print(f"xformers_cutlass_output: {get_error_message(e)}")
 
+            try:
+                xformers_cutlass_padded_output = xformers_cutlass_padded(
+                    q.transpose(1, 2),
+                    k.transpose(1, 2),
+                    v.transpose(1, 2),
+                    attn_bias=attn_bias,
+                ).transpose(1, 2)
+                print(
+                    f"xformers_cutlass_padded_output: {torch.allclose(xformers_cutlass_padded_output, expected, rtol=rtol, atol=atol)}"
+                )
+            except Exception as e:
+                print(f"xformers_cutlass_padded_output: {get_error_message(e)}")
+
         # xformers triton
         try:
             xformers_triton_output = xformers_attn_triton(
@@ -108,6 +169,19 @@ def main():
         except Exception as e:
             print(f"xformers_triton_output: {get_error_message(e)}")
 
+        try:
+            xformers_triton_padded_output = xformers_triton_padded(
+                q.transpose(1, 2),
+                k.transpose(1, 2),
+                v.transpose(1, 2),
+                attn_bias=attn_bias,
+            ).transpose(1, 2)
+            print(
+                f"xformers_triton_padded_output: {torch.allclose(xformers_triton_padded_output, expected, rtol=rtol, atol=atol)}"
+            )
+        except Exception as e:
+            print(f"xformers_triton_padded_output: {get_error_message(e)}")
+
         # flash-attn
         if attn_bias is None:
             try:
@@ -119,6 +193,17 @@ def main():
                 )
             except Exception as e:
                 print(f"flash_output: {get_error_message(e)}")
+
+            try:
+                flash_padded_output = flash_attn_padded(
+                    q.transpose(1, 2), k.transpose(1, 2), v.transpose(1, 2)
+                ).transpose(1, 2)
+                print(
+                    f"flash_padded_output: {torch.allclose(flash_padded_output, expected, rtol=rtol, atol=atol)}"
+                )
+            except Exception as e:
+                print(f"flash_padded_output: {get_error_message(e)}")
+
         else:
             print(f"flash_output: not support attn_bias")
 
@@ -133,6 +218,16 @@ def main():
             except Exception as e:
                 print(f"flash3_output: {get_error_message(e)}")
 
+            try:
+                flash3_padded_output = flash3_attn_padded(
+                    q.transpose(1, 2), k.transpose(1, 2), v.transpose(1, 2)
+                ).transpose(1, 2)
+                print(
+                    f"flash3_padded_output: {torch.allclose(flash3_padded_output, expected, rtol=rtol, atol=atol)}"
+                )
+            except Exception as e:
+                print(f"flash3_padded_output: {get_error_message(e)}")
+
         # pure triton
         if pure_triton_attn_bshd is not None and attn_bias is None:
             try:
@@ -145,6 +240,16 @@ def main():
             except Exception as e:
                 print(f"triton_bshd_output: {get_error_message(e)}")
 
+            try:
+                triton_bshd_padded_output = pure_triton_bshd_padded(
+                    q.transpose(1, 2), k.transpose(1, 2), v.transpose(1, 2)
+                ).transpose(1, 2)
+                print(
+                    f"triton_bshd_padded_output: {torch.allclose(triton_bshd_padded_output, expected, rtol=rtol, atol=atol)}"
+                )
+            except Exception as e:
+                print(f"triton_bshd_padded_output: {get_error_message(e)}")
+
         if pure_triton_attn_bhsd is not None and attn_bias is None:
             try:
                 triton_bhsd_output = pure_triton_attn_bhsd(q, k, v)
@@ -153,6 +258,14 @@ def main():
                 )
             except Exception as e:
                 print(f"triton_bhsd_output: {get_error_message(e)}")
+
+            try:
+                triton_bhsd_padded_output = pure_triton_bhsd_padded(q, k, v)
+                print(
+                    f"triton_bhsd_padded_output: {torch.allclose(triton_bhsd_padded_output, expected, rtol=rtol, atol=atol)}"
+                )
+            except Exception as e:
+                print(f"triton_bhsd_padded_output: {get_error_message(e)}")
 
 
 if __name__ == "__main__":

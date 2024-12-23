@@ -151,7 +151,7 @@ def benchmark_attn(
             query.shape[2] if layout == "bshd" else query.shape[1],
             query.shape[3],
         )
-        print(f"{name:<20} \tMilisec={ms:.6f} \tTFLOPS={tflops:.6f}")
+        print(f"{name:<30} \tMilisec={ms:.6f} \tTFLOPS={tflops:.6f}")
 
     except Exception as e:
-        print(f"{name:<20} \tException: {get_error_message(e)}")
+        print(f"{name:<30} \tException: {get_error_message(e)}")

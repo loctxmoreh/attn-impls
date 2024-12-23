@@ -1,19 +1,31 @@
 import math
+from contextlib import contextmanager
 
 import torch
 from torch.nn import functional as F
 from torch.nn.attention import SDPBackend, sdpa_kernel
 
 
-def pt_sdpa_cpu(q, k, v, attn_bias=None):
-    assert q.device == torch.device("cpu")
-    assert k.device == torch.device("cpu")
-    assert v.device == torch.device("cpu")
-
-    return F.scaled_dot_product_attention(q, k, v, attn_mask=attn_bias)
+@contextmanager
+def no_context():
+    yield
 
 
-def pt_padded(q, k, v, attn_bias=None):
+@contextmanager
+def flash_attention_context():
+    with sdpa_kernel(backends=[SDPBackend.FLASH_ATTENTION]):
+        yield
+
+
+@contextmanager
+def efficient_attention_context():
+    with sdpa_kernel(backends=[SDPBackend.EFFICIENT_ATTENTION]):
+        yield
+
+
+def apply_attention_with_context(
+    q, k, v, attn_func, attn_bias=None, context=no_context
+):
     target_head_dim = 128
     origin_head_dim = q.shape[-1]
     origin_scale = 1 / math.sqrt(origin_head_dim)
@@ -25,11 +37,45 @@ def pt_padded(q, k, v, attn_bias=None):
     k = F.pad(k, (0, padding_amount), "constant", padding_value)
     v = F.pad(v, (0, padding_amount), "constant", padding_value)
 
-    attn_output = F.scaled_dot_product_attention(
-        q, k, v, attn_mask=attn_bias, scale=origin_scale
+    with context():
+        attn_output = attn_func(q, k, v, attn_mask=attn_bias, scale=origin_scale)
+        return attn_output[..., :origin_head_dim]
+
+
+def pt_padded(q, k, v, attn_bias=None):
+    return apply_attention_with_context(
+        q, k, v, F.scaled_dot_product_attention, attn_bias
     )
-    attn_output = attn_output[..., :origin_head_dim]
-    return attn_output
+
+
+def pt_flash_padded(q, k, v, attn_bias=None):
+    return apply_attention_with_context(
+        q,
+        k,
+        v,
+        F.scaled_dot_product_attention,
+        attn_bias,
+        context=flash_attention_context,
+    )
+
+
+def pt_xformers_padded(q, k, v, attn_bias=None):
+    return apply_attention_with_context(
+        q,
+        k,
+        v,
+        F.scaled_dot_product_attention,
+        attn_bias,
+        context=efficient_attention_context,
+    )
+
+
+def pt_sdpa_cpu(q, k, v, attn_bias=None):
+    assert q.device == torch.device("cpu")
+    assert k.device == torch.device("cpu")
+    assert v.device == torch.device("cpu")
+
+    return F.scaled_dot_product_attention(q, k, v, attn_mask=attn_bias)
 
 
 def pt_flash(q, k, v, attn_bias=None):

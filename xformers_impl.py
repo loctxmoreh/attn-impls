@@ -1,45 +1,101 @@
+import math
 from functools import partial
 
-import torch 
+import torch
 from torch.nn import functional as F
 from xformers import ops as xops
-from xformers.ops.fmha import MemoryEfficientAttentionCkOp, MemoryEfficientAttentionCutlassOp
-from xformers.ops.fmha.triton_splitk import (
-    FwOp_S1 as TritonFw_S1,
-    FwOp_S2 as TritonFw_S2,
-    FwOp_S4 as TritonFw_S4,
-    FwOp_S8 as TritonFw_S8,
-    FwOp_S16 as TritonFw_S16,
-    FwOp_S32 as TritonFw_S32,
-    FwOp_S64 as TritonFw_S64,
-    FwOp_S128 as TritonFw_S128,
+from xformers.ops.fmha import (
+    MemoryEfficientAttentionCkOp,
+    MemoryEfficientAttentionCutlassOp,
+)
+from xformers.ops.fmha.triton_splitk import FwOp_S1 as TritonFw_S1
+from xformers.ops.fmha.triton_splitk import FwOp_S2 as TritonFw_S2
+from xformers.ops.fmha.triton_splitk import FwOp_S4 as TritonFw_S4
+from xformers.ops.fmha.triton_splitk import FwOp_S8 as TritonFw_S8
+from xformers.ops.fmha.triton_splitk import FwOp_S16 as TritonFw_S16
+from xformers.ops.fmha.triton_splitk import FwOp_S32 as TritonFw_S32
+from xformers.ops.fmha.triton_splitk import FwOp_S64 as TritonFw_S64
+from xformers.ops.fmha.triton_splitk import FwOp_S128 as TritonFw_S128
+
+MemoryEfficientAttentionTritonS1_Op = (TritonFw_S1,)
+MemoryEfficientAttentionTritonS2_Op = (TritonFw_S2,)
+MemoryEfficientAttentionTritonS4_Op = (TritonFw_S4,)
+MemoryEfficientAttentionTritonS8_Op = (TritonFw_S8,)
+MemoryEfficientAttentionTritonS16_Op = (TritonFw_S16,)
+MemoryEfficientAttentionTritonS32_Op = (TritonFw_S32,)
+MemoryEfficientAttentionTritonS64_Op = (TritonFw_S64,)
+MemoryEfficientAttentionTritonS128_Op = (TritonFw_S128,)
+
+xformers_attn_ck = partial(
+    xops.memory_efficient_attention, op=MemoryEfficientAttentionCkOp
+)
+xformers_attn_cutlass = partial(
+    xops.memory_efficient_attention, op=MemoryEfficientAttentionCutlassOp
 )
 
-MemoryEfficientAttentionTritonS1_Op = (TritonFw_S1, )
-MemoryEfficientAttentionTritonS2_Op = (TritonFw_S2, )
-MemoryEfficientAttentionTritonS4_Op = (TritonFw_S4, )
-MemoryEfficientAttentionTritonS8_Op = (TritonFw_S8, )
-MemoryEfficientAttentionTritonS16_Op = (TritonFw_S16, )
-MemoryEfficientAttentionTritonS32_Op = (TritonFw_S32, )
-MemoryEfficientAttentionTritonS64_Op = (TritonFw_S64, )
-MemoryEfficientAttentionTritonS128_Op = (TritonFw_S128, )
-
-xformers_attn_ck = partial(xops.memory_efficient_attention, op=MemoryEfficientAttentionCkOp)
-xformers_attn_cutlass = partial(xops.memory_efficient_attention, op=MemoryEfficientAttentionCutlassOp)
-
-xformers_attn_triton_s1 = partial(xops.memory_efficient_attention, op=MemoryEfficientAttentionTritonS1_Op)
-xformers_attn_triton_s2 = partial(xops.memory_efficient_attention, op=MemoryEfficientAttentionTritonS2_Op)
-xformers_attn_triton_s4 = partial(xops.memory_efficient_attention, op=MemoryEfficientAttentionTritonS4_Op)
-xformers_attn_triton_s8 = partial(xops.memory_efficient_attention, op=MemoryEfficientAttentionTritonS8_Op)
-xformers_attn_triton_s16 = partial(xops.memory_efficient_attention, op=MemoryEfficientAttentionTritonS16_Op)
-xformers_attn_triton_s32 = partial(xops.memory_efficient_attention, op=MemoryEfficientAttentionTritonS32_Op)
-xformers_attn_triton_s64 = partial(xops.memory_efficient_attention, op=MemoryEfficientAttentionTritonS64_Op)
+xformers_attn_triton_s1 = partial(
+    xops.memory_efficient_attention, op=MemoryEfficientAttentionTritonS1_Op
+)
+xformers_attn_triton_s2 = partial(
+    xops.memory_efficient_attention, op=MemoryEfficientAttentionTritonS2_Op
+)
+xformers_attn_triton_s4 = partial(
+    xops.memory_efficient_attention, op=MemoryEfficientAttentionTritonS4_Op
+)
+xformers_attn_triton_s8 = partial(
+    xops.memory_efficient_attention, op=MemoryEfficientAttentionTritonS8_Op
+)
+xformers_attn_triton_s16 = partial(
+    xops.memory_efficient_attention, op=MemoryEfficientAttentionTritonS16_Op
+)
+xformers_attn_triton_s32 = partial(
+    xops.memory_efficient_attention, op=MemoryEfficientAttentionTritonS32_Op
+)
+xformers_attn_triton_s64 = partial(
+    xops.memory_efficient_attention, op=MemoryEfficientAttentionTritonS64_Op
+)
 # xformers_attn_triton_s128 = partial(xops.memory_efficient_attention, op=MemoryEfficientAttentionTritonS128_Op)    # Cause core dump
 
 
 # In context of GPU, I have no idea why the need for multiple split-K impls
 # Choosing S1 as default
 xformers_attn_triton = xformers_attn_triton_s1
+
+
+# Padded functions
+def apply_padded_xformers_attn(q, k, v, attn_func, attn_bias=None):
+    target_head_dim = 128
+    origin_head_dim = q.shape[-1]
+    origin_scale = 1 / math.sqrt(origin_head_dim)
+
+    padding_amount = target_head_dim - origin_head_dim
+    padding_value = 0
+
+    q = F.pad(q, (0, padding_amount), "constant", padding_value)
+    k = F.pad(k, (0, padding_amount), "constant", padding_value)
+    v = F.pad(v, (0, padding_amount), "constant", padding_value)
+
+    attn_output = attn_func(q, k, v, scale=origin_scale, attn_bias=attn_bias)
+    return attn_output[..., :origin_head_dim]
+
+
+def xformers_padded(q, k, v, attn_bias=None):
+    return apply_padded_xformers_attn(
+        q, k, v, xops.memory_efficient_attention, attn_bias
+    )
+
+
+def xformers_ck_padded(q, k, v, attn_bias=None):
+    return apply_padded_xformers_attn(q, k, v, xformers_attn_ck, attn_bias)
+
+
+def xformers_cutlass_padded(q, k, v, attn_bias=None):
+    return apply_padded_xformers_attn(q, k, v, xformers_attn_cutlass, attn_bias)
+
+
+def xformers_triton_padded(q, k, v, attn_bias=None):
+    return apply_padded_xformers_attn(q, k, v, xformers_attn_triton, attn_bias)
+
 
 if __name__ == "__main__":
     B, M, K = 3, 32, 128
@@ -68,11 +124,11 @@ if __name__ == "__main__":
     # torch.testing.assert_close(output_ck, output)        # True
 
     # print(torch.allclose(output, output_triton, rtol=1e-03, atol=1e-05))      # False
-    # print(torch.allclose(output, output_triton, rtol=1e-02, atol=1e-03))      
+    # print(torch.allclose(output, output_triton, rtol=1e-02, atol=1e-03))
     #
     # print(torch.allclose(output_ck, output_triton, rtol=1e-03, atol=1e-05))   # False
-    # print(torch.allclose(output_ck, output_triton, rtol=1e-02, atol=1e-03))  
-    # torch.testing.assert_close(output_ck, output_triton) 
+    # print(torch.allclose(output_ck, output_triton, rtol=1e-02, atol=1e-03))
+    # torch.testing.assert_close(output_ck, output_triton)
 
-    print(torch.allclose(output, output_sdpa, rtol=1e-02, atol=1e-03)) # False
-    # torch.testing.assert_close(output, output_sdpa) 
+    print(torch.allclose(output, output_sdpa, rtol=1e-02, atol=1e-03))  # False
+    # torch.testing.assert_close(output, output_sdpa)
