@@ -14,7 +14,7 @@ from common import is_cuda, is_rocm
 from flash_impl import flash3_attn
 from opensora.attention import ATTENTION_CONFIGS, prepare_attn_input
 from opensora.utils import get_error_message
-from pt_impl import pt_flash, pt_xformers
+from pt_impl import pt_flash, pt_padded, pt_xformers
 from pure_triton_impl import pure_triton_attn_bhsd, pure_triton_attn_bshd
 from xformers_impl import xformers_attn_ck, xformers_attn_cutlass, xformers_attn_triton
 
@@ -40,6 +40,14 @@ def main():
             print(f"expected: {get_error_message(e)}")
 
         # Pytorch implementation
+        try:
+            pt_padded_output = pt_padded(q, k, v, attn_bias=attn_bias)
+            print(
+                f"pt_padded_output: {torch.allclose(pt_padded_output, expected, rtol=rtol, atol=atol)}"
+            )
+        except Exception as e:
+            print(f"pt_padded_output: {get_error_message(e)}")
+
         try:
             pt_flash_output = pt_flash(q, k, v, attn_bias=attn_bias)
             print(

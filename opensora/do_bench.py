@@ -14,7 +14,7 @@ from xformers import ops as xops
 from common import is_cuda, is_rocm
 from flash_impl import flash3_attn
 from opensora.attention import ATTENTION_CONFIGS, benchmark_attn
-from pt_impl import pt_flash, pt_xformers
+from pt_impl import pt_flash, pt_padded, pt_xformers
 from pure_triton_impl import pure_triton_attn_bhsd, pure_triton_attn_bshd
 from xformers_impl import xformers_attn_ck, xformers_attn_cutlass
 from xformers_impl import (
@@ -35,6 +35,14 @@ if __name__ == "__main__":
         benchmark_attn(
             "pytorch-default",
             F.scaled_dot_product_attention,
+            attn_config,
+            layout="bhsd",
+            device=device,
+            dtype=dtype,
+        )
+        benchmark_attn(
+            "pytorch-padded",
+            pt_padded,
             attn_config,
             layout="bhsd",
             device=device,
