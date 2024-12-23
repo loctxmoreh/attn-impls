@@ -126,7 +126,4 @@ if __name__ == "__main__":
     benchmark("sageattn-hnd-smooth_k", sageattn, batch_size, sequence_length, num_heads, head_dim, use_fp16_pv_accum=False, layout="bhsd")
     benchmark("sageattn-hnd-use_fp16_pv_accum", sageattn, batch_size, sequence_length, num_heads, head_dim, use_fp16_pv_accum=True, smooth_k=False, layout="bhsd")
     benchmark("sageattn-hnd", sageattn, batch_size, sequence_length, num_heads, head_dim, use_fp16_pv_accum=False, smooth_k=False, layout="bhsd")
-
     # benchmark("pytorch-math", pt_math, batch_size, sequence_length, num_heads, head_dim, layout="bhsd")
-
-
