@@ -18,7 +18,8 @@ torch.manual_seed(42)
 # Prepare attn configs
 attn_name = "multihead-attn"
 attn_config = ATTENTION_CONFIGS[attn_name]
-num_runs = 30
+num_runs = 100
+warm_up = 25
 layout = "bshd"
 dtype = torch.float16
 device = "cuda"
@@ -27,9 +28,9 @@ save_dir = Path("profiling_data")
 with profile(
     activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA],
     schedule=schedule(
-        wait=25,  # Number of steps to skip
+        wait=warm_up,  # Number of steps to skip
         warmup=0,  # Number of steps to include in the warm-up phase
-        active=5,  # Number of steps to include in the active phase (profiling)
+        active=num_runs,  # Number of steps to include in the active phase (profiling)
         repeat=1,  # Number of times to repeat the above schedule
     ),
     record_shapes=True,
@@ -38,7 +39,7 @@ with profile(
         f"{attn_name}.xformers-default.origin", save_dir
     ),
 ) as prof:
-    for i in range(num_runs):
+    for i in range(warm_up + num_runs):
         q, k, v, attn_bias = prepare_attn_input(
             attn_config, layout=layout, device=device, dtype=dtype
         )
@@ -48,9 +49,9 @@ with profile(
 with profile(
     activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA],
     schedule=schedule(
-        wait=25,  # Number of steps to skip
+        wait=warm_up,  # Number of steps to skip
         warmup=0,  # Number of steps to include in the warm-up phase
-        active=5,  # Number of steps to include in the active phase (profiling)
+        active=num_runs,  # Number of steps to include in the active phase (profiling)
         repeat=1,  # Number of times to repeat the above schedule
     ),
     record_shapes=True,
@@ -59,7 +60,7 @@ with profile(
         f"{attn_name}.xformers-default.padded", save_dir
     ),
 ) as prof:
-    for i in range(num_runs):
+    for i in range(warm_up + num_runs):
         q, k, v, attn_bias = prepare_attn_input(
             attn_config, layout=layout, device=device, dtype=dtype
         )
