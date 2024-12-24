@@ -22,6 +22,7 @@ layout = "bshd"
 origin_func = xops.memory_efficient_attention
 padded_func = xformers_padded
 attn_name = "multihead-attn"
+func_name = "xformers-default"
 
 attn_config = ATTENTION_CONFIGS[attn_name]
 num_runs = 100
@@ -58,9 +59,7 @@ with profile(
     activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA],
     record_shapes=True,
     with_stack=True,
-    on_trace_ready=trace_handler_wrapper(
-        f"{attn_name}.xformers-default.origin", save_dir
-    ),
+    on_trace_ready=trace_handler_wrapper(f"{attn_name}.{func_name}.origin", save_dir),
 ):
     for i in range(num_runs):
         out = origin_func(*args)
@@ -74,9 +73,7 @@ with profile(
     activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA],
     record_shapes=True,
     with_stack=True,
-    on_trace_ready=trace_handler_wrapper(
-        f"{attn_name}.xformers-default.padded", save_dir
-    ),
+    on_trace_ready=trace_handler_wrapper(f"{attn_name}.{func_name}.padded", save_dir),
 ):
     for i in range(num_runs):
         out = padded_func(*args)
