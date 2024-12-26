@@ -99,6 +99,20 @@ def main():
         except Exception as e:
             print(f"pt_xformers_padded_output: {get_error_message(e)}")
 
+        # xformers impls
+        try:
+            xformers_padded_output = xformers_padded(
+                q.transpose(1, 2),
+                k.transpose(1, 2),
+                v.transpose(1, 2),
+                attn_bias=attn_bias,
+            ).transpose(1, 2)
+            print(
+                f"xformers_padded_output: {torch.allclose(xformers_padded_output, expected, rtol=rtol, atol=atol)}"
+            )
+        except Exception as e:
+            print(f"xformers_padded_output: {get_error_message(e)}")
+
         # xformers CK/cutlass
         if is_rocm():
             try:

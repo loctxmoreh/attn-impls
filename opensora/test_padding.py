@@ -4,16 +4,30 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 import torch
+import xformers.ops as xops
 from torch.nn import functional as F
 
-from pt_impl import pt_padded
+from opensora.attention import ATTENTION_CONFIGS, prepare_attn_input
+from xformers_impl import xformers_padded
 
-q = torch.randn(60, 16, 3600, 72)
-k = torch.randn(60, 16, 3600, 72)
-v = torch.randn(60, 16, 3600, 72)
+# Prepare attn configs
+layout = "bshd"
+attn_name = "multihead-attn"
+attn_config = ATTENTION_CONFIGS[attn_name]
+dtype = torch.float16
+device = "cuda"
 
-out1 = F.scaled_dot_product_attention(q, k, v)
-out2 = pt_padded(q, k, v)
+# Prepare inputs
+q, k, v, attn_bias = prepare_attn_input(
+    attn_config, layout=layout, device=device, dtype=dtype
+)
+print(f"{q.shape=}")
+print(f"{k.shape=}")
+print(f"{v.shape=}")
+print(f"{attn_bias.shape=}")
+
+out1 = xops.memory_efficient_attention(q, k, v, attn_bias=attn_bias)
+out2 = xformers_padded(q, k, v, attn_bias=attn_bias)
 
 print(out1[0, 0, 0])
 print(out2[0, 0, 0])
