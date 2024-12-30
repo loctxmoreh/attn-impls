@@ -27,7 +27,7 @@ def apply_padded_flash_attn(q, k, v, attn_func):
     v = F.pad(v, (0, padding_amount), "constant", padding_value)
 
     attn_output = attn_func(q, k, v, softmax_scale=origin_scale)
-    return attn_output[..., :origin_head_dim]
+    return attn_output[..., :origin_head_dim].clone()
 
 
 if is_hopper():

@@ -19,7 +19,7 @@ def apply_padded_triton_attn(q, k, v, attn_func):
     v = F.pad(v, (0, padding_amount), "constant", padding_value)
 
     attn_output = attn_func(q, k, v, scale=origin_scale)
-    return attn_output[..., :origin_head_dim]
+    return attn_output[..., :origin_head_dim].clone()
 
 
 if is_rocm():

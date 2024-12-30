@@ -39,7 +39,7 @@ def apply_attention_with_context(
 
     with context():
         attn_output = attn_func(q, k, v, attn_mask=attn_bias, scale=origin_scale)
-        return attn_output[..., :origin_head_dim]
+        return attn_output[..., :origin_head_dim].clone()
 
 
 def pt_padded(q, k, v, attn_bias=None):

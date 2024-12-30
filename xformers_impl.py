@@ -76,7 +76,7 @@ def apply_padded_xformers_attn(q, k, v, attn_func, attn_bias=None):
     v = F.pad(v, (0, padding_amount), "constant", padding_value)
 
     attn_output = attn_func(q, k, v, scale=origin_scale, attn_bias=attn_bias)
-    return attn_output[..., :origin_head_dim]
+    return attn_output[..., :origin_head_dim].clone()
 
 
 def xformers_padded(q, k, v, attn_bias=None):
