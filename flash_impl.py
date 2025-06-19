@@ -51,14 +51,17 @@ if __name__ == "__main__":
     metadata.max_seqlens_q = seq_len_q
     metadata.max_seqlens_k = seq_len_k
 
-    output = F.scaled_dot_product_attention(q, k, v)
+    ref_output = F.scaled_dot_product_attention(torch.permute(q, [0, 2, 1, 3]),
+                                             torch.permute(k, [0, 2, 1, 3]),
+                                             torch.permute(v, [0, 2, 1, 3]))
+    ref_output = torch.permute(ref_output, [0, 2, 1, 3])
     output_0 = flash_attn_func(q, k, v, return_attn_probs=False)
     output_triton, _ = pure_triton_attn(q, k, v, None, metadata)
     # output_1 = flash_attn_triton(q, k, v)                         # Compile error
     # output_2 = flash_attn_triton_og(q, k, v, 1.0 /(d ** -0.5))    # Compile error
 
-    print(torch.allclose(output, output_triton, atol=1e-3, rtol=1e-2))  # False
-    print(torch.allclose(output, output_0, atol=1e-3, rtol=1e-2))       # False
+    print(torch.allclose(ref_output, output_triton, atol=1e-3, rtol=1e-2))  # True
+    print(torch.allclose(ref_output, output_0, atol=1e-3, rtol=1e-2))       # True
 
     torch.testing.assert_close(output_0, output_triton, atol=1e-3, rtol=1e-2)   # True
 

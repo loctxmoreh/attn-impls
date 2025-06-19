@@ -69,7 +69,7 @@ if __name__ == "__main__":
     num_heads = 24
     head_dim = 64
 
-    benchmark("cpu-impl", pt_sdpa_cpu, batch_size, sequence_length, num_heads, head_dim, device="cpu")
+    benchmark("cpu-impl", pt_sdpa_cpu, batch_size, sequence_length, num_heads, head_dim, layout="bhsd", device="cpu")
 
     benchmark("flash_attn-ck", flash_attn_func, batch_size, sequence_length, num_heads, head_dim, layout="bshd")
     # benchmark("flash_attn-triton", flash_attn_triton, batch_size, sequence_length, num_heads, head_dim) # Compile error
